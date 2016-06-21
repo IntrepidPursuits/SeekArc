@@ -30,9 +30,9 @@
         <attr name="progressWidth" format="dimension" />
         <attr name="arcWidth" format="dimension" />
         <attr name="progress" format="integer" />
-        <attr name="rotation" format="integer" />
-        <attr name="startAngle" format="integer" />
-        <attr name="sweepAngle" format="integer" />
+        <attr name="rotation" format="float" />
+        <attr name="startAngle" format="float" />
+        <attr name="sweepAngle" format="float" />
         <attr name="arcColor" format="color" />
         <attr name="progressColor" format="color" />
         <attr name="roundEdges" format="boolean" />
