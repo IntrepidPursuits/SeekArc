@@ -65,7 +65,7 @@ public class SeekArc extends View {
 	/**
 	 * The Current value that the SeekArc is set to
 	 */
-	private int mProgress = 0;
+	private float mProgress = 0;
 		
 	/**
 	 * The width of the progress line for this SeekArc
@@ -106,6 +106,11 @@ public class SeekArc extends View {
 	 * Will the progress increase clockwise or anti-clockwise
 	 */
 	private boolean mClockwise = true;
+
+	/**
+	 * determines whether SeekArc will snap to intervals or scroll smoothly
+	 */
+	private boolean mSmoothSweep = false;
 
 
 	/**
@@ -179,7 +184,7 @@ public class SeekArc extends View {
 		init(context, attrs, defStyle);
 	}
 
-	private void init(Context context, AttributeSet attrs, int defStyle) {
+	protected void init(Context context, AttributeSet attrs, int defStyle) {
 
 		Log.d(TAG, "Initialising SeekArc");
 		final Resources res = getResources();
@@ -213,7 +218,7 @@ public class SeekArc extends View {
 					thumbHalfHeight);
 
 			mMax = a.getInteger(R.styleable.SeekArc_max, mMax);
-			mProgress = a.getInteger(R.styleable.SeekArc_progress, mProgress);
+			mProgress = a.getInteger(R.styleable.SeekArc_progress, getRoundedProgress());
 			mProgressWidth = (int) a.getDimension(
 					R.styleable.SeekArc_progressWidth, mProgressWidth);
 			mArcWidth = (int) a.getDimension(R.styleable.SeekArc_arcWidth,
@@ -228,6 +233,7 @@ public class SeekArc extends View {
 			mClockwise = a.getBoolean(R.styleable.SeekArc_clockwise,
 					mClockwise);
 			mEnabled = a.getBoolean(R.styleable.SeekArc_enabled, mEnabled);
+			mSmoothSweep = a.getBoolean(R.styleable.SeekArc_enabled, mSmoothSweep);
 
 			arcColor = a.getColor(R.styleable.SeekArc_arcColor, arcColor);
 			progressColor = a.getColor(R.styleable.SeekArc_progressColor,
@@ -436,14 +442,14 @@ public class SeekArc extends View {
 
 		progress = (progress > mMax) ? mMax : progress;
 		progress = (progress < 0) ? 0 : progress;
-		mProgress = Math.round(progress);
+		mProgress = mSmoothSweep ? progress : Math.round(progress);
 
 		if (mOnSeekArcChangeListener != null) {
 			mOnSeekArcChangeListener
-					.onProgressChanged(this, mProgress, fromUser);
+					.onProgressChanged(this, getRoundedProgress(), fromUser);
 		}
 
-		mProgressSweep = (progress / mMax) * mSweepAngle;
+		mProgressSweep = (mProgress / mMax) * mSweepAngle;
 
 		updateThumbPosition();
 
@@ -464,11 +470,11 @@ public class SeekArc extends View {
 		mOnSeekArcChangeListener = l;
 	}
 
-	public void setProgress(int progress) {
+	public void setProgress(float progress) {
 		updateProgress(progress, false);
 	}
 
-	public int getProgress() {
+	public float getProgress() {
 		return mProgress;
 	}
 
@@ -493,7 +499,7 @@ public class SeekArc extends View {
 		return mRotation;
 	}
 
-	public void setArcRotation(int mRotation) {
+	public void setArcRotation(float mRotation) {
 		this.mRotation = mRotation;
 		updateThumbPosition();
 	}
@@ -580,5 +586,17 @@ public class SeekArc extends View {
 
 	public void setMax(int mMax) {
 		this.mMax = mMax;
+	}
+
+	public boolean isSmoothSweep() {
+		return mSmoothSweep;
+	}
+
+	public void setSmoothSweep(boolean mSmoothSweep) {
+		this.mSmoothSweep = mSmoothSweep;
+	}
+
+	public int getRoundedProgress() {
+		return Math.round(mProgress);
 	}
 }
