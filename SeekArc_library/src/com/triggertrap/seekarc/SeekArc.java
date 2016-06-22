@@ -51,6 +51,7 @@ public class SeekArc extends View {
 	private static int INVALID_PROGRESS_VALUE = -1;
 	// The initial rotational offset -90 means we start at 12 o'clock
 	private static final int ANGLE_OFFSET = -90;
+	private static final float DEFAULT_START_END_ANGLE_BUFFER = 4;
 
 	/**
 	 * The Drawable for the seek arc thumbnail
@@ -111,12 +112,15 @@ public class SeekArc extends View {
 	 * determines whether SeekArc will snap to intervals or scroll smoothly
 	 */
 	private boolean mSmoothSweep = false;
-
-
 	/**
 	 * is the control enabled/touchable
  	 */
 	private boolean mEnabled = true;
+
+	/**
+	 * Distance before start angle and after end angle that responds to touch
+	 */
+	private float mStartEndAngleBuffer = DEFAULT_START_END_ANGLE_BUFFER ;
 
 	// Internal variables
 	private float mArcRadius = 0;
@@ -332,6 +336,11 @@ public class SeekArc extends View {
 
 			switch (event.getAction()) {
 				case MotionEvent.ACTION_DOWN:
+					float x = event.getX();
+					float y = event.getY();
+					if (ignoreTouch(x, y, getTouchDegrees(x, y))) {
+						return false;
+					}
 					onStartTrackingTouch();
 					updateOnTouch(event);
 					break;
@@ -377,26 +386,31 @@ public class SeekArc extends View {
 	}
 
 	private void updateOnTouch(MotionEvent event) {
-		boolean ignoreTouch = ignoreTouch(event.getX(), event.getY());
+		double mTouchAngle = getTouchDegrees(event.getX(), event.getY());
+		boolean ignoreTouch = ignoreTouch(event.getX(), event.getY(), mTouchAngle);
 		if (ignoreTouch) {
 			return;
 		}
 		setPressed(true);
-		double mTouchAngle = getTouchDegrees(event.getX(), event.getY());
 		float progress = getProgressForAngle(mTouchAngle);
 		updateProgress(progress, true);
 	}
 
-	private boolean ignoreTouch(float xPos, float yPos) {
+	private boolean ignoreTouch(float xPos, float yPos, double touchAngle) {
 		boolean ignore = false;
 		float x = xPos - mTranslateX;
 		float y = yPos - mTranslateY;
 
 		float touchRadius = (float) Math.sqrt(((x * x) + (y * y)));
-		if (touchRadius < mTouchIgnoreRadius) {
+		if (touchRadius < mTouchIgnoreRadius || !touchWithinAngleBounds(touchAngle)) {
 			ignore = true;
 		}
 		return ignore;
+	}
+
+	private boolean touchWithinAngleBounds(double touchAngle) {
+		return touchAngle <= mSweepAngle + mStartEndAngleBuffer ||
+				touchAngle > 360 - mStartEndAngleBuffer;
 	}
 
 	private double getTouchDegrees(float xPos, float yPos) {
@@ -598,5 +612,9 @@ public class SeekArc extends View {
 
 	public int getRoundedProgress() {
 		return Math.round(mProgress);
+	}
+
+	public void setStartEndAngleBuffer(float mStartEndAngleBuffer) {
+		this.mStartEndAngleBuffer = mStartEndAngleBuffer;
 	}
 }
