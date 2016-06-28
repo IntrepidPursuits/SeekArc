@@ -47,6 +47,10 @@ import android.view.View;
  */
 public class SeekArc extends View {
 
+	public enum TouchInsideMode {
+		ALWAYS, NEVER, ON_MOVE
+	}
+
 	private static final String TAG = SeekArc.class.getSimpleName();
 	private static int INVALID_PROGRESS_VALUE = -1;
 	// The initial rotational offset -90 means we start at 12 o'clock
@@ -97,11 +101,11 @@ public class SeekArc extends View {
 	 * Give the SeekArc rounded edges
 	 */
 	private boolean mRoundedEdges = false;
-	
+
 	/**
 	 * Enable touch inside the SeekArc
 	 */
-	private boolean mTouchInside = true;
+	private TouchInsideMode mTouchInsideMode = TouchInsideMode.ALWAYS;
 	
 	/**
 	 * Will the progress increase clockwise or anti-clockwise
@@ -132,7 +136,8 @@ public class SeekArc extends View {
 	private float mTranslateY;
 	private double mThumbXPos;
 	private double mThumbYPos;
-	private float mTouchIgnoreRadius;
+	private float mTouchIgnoreDownRadius;
+	private float mTouchIgnoreMoveRadius;
 	private OnSeekArcChangeListener mOnSeekArcChangeListener;
 
 	public interface OnSeekArcChangeListener {
@@ -232,8 +237,7 @@ public class SeekArc extends View {
 			mRotation = a.getFloat(R.styleable.SeekArc_rotation, mRotation);
 			mRoundedEdges = a.getBoolean(R.styleable.SeekArc_roundEdges,
 					mRoundedEdges);
-			mTouchInside = a.getBoolean(R.styleable.SeekArc_touchInside,
-					mTouchInside);
+			mTouchInsideMode = TouchInsideMode.values()[a.getInt(R.styleable.SeekArc_touchInside, 0)];
 			mClockwise = a.getBoolean(R.styleable.SeekArc_clockwise,
 					mClockwise);
 			mEnabled = a.getBoolean(R.styleable.SeekArc_enabled, mEnabled);
@@ -325,7 +329,8 @@ public class SeekArc extends View {
 		mThumbXPos = mArcRadius * Math.cos(Math.toRadians(arcStart));
 		mThumbYPos = mArcRadius * Math.sin(Math.toRadians(arcStart));
 		
-		setTouchInSide(mTouchInside);
+		//setTouchInSide(mTouchInside);
+		setTouchInside(mTouchInsideMode);
 		super.onMeasure(widthMeasureSpec, heightMeasureSpec);
 	}
 
@@ -338,7 +343,7 @@ public class SeekArc extends View {
 				case MotionEvent.ACTION_DOWN:
 					float x = event.getX();
 					float y = event.getY();
-					if (ignoreTouch(x, y, getTouchDegrees(x, y))) {
+					if (ignoreTouchDown(x, y, getTouchDegrees(x, y))) {
 						return false;
 					}
 					onStartTrackingTouch();
@@ -386,26 +391,36 @@ public class SeekArc extends View {
 	}
 
 	private void updateOnTouch(MotionEvent event) {
-		double mTouchAngle = getTouchDegrees(event.getX(), event.getY());
-		boolean ignoreTouch = ignoreTouch(event.getX(), event.getY(), mTouchAngle);
+		boolean ignoreTouch = ignoreTouchMove(event.getX(), event.getY());
 		if (ignoreTouch) {
 			return;
 		}
 		setPressed(true);
-		float progress = getProgressForAngle(mTouchAngle);
+		float progress = getProgressForAngle(getTouchDegrees(event.getX(), event.getY()));
 		updateProgress(progress, true);
 	}
 
-	private boolean ignoreTouch(float xPos, float yPos, double touchAngle) {
+	private boolean ignoreTouchDown(float xPos, float yPos, double touchAngle) {
 		boolean ignore = false;
-		float x = xPos - mTranslateX;
-		float y = yPos - mTranslateY;
-
-		float touchRadius = (float) Math.sqrt(((x * x) + (y * y)));
-		if (touchRadius < mTouchIgnoreRadius || !touchWithinAngleBounds(touchAngle)) {
+		float touchRadius = getTouchRadius(xPos, yPos);
+		if (touchRadius < mTouchIgnoreDownRadius || !touchWithinAngleBounds(touchAngle)) {
 			ignore = true;
 		}
 		return ignore;
+	}
+
+	private float getTouchRadius(float xPos, float yPos) {
+		float x = xPos - mTranslateX;
+		float y = yPos - mTranslateY;
+		return (float) Math.sqrt(((x * x) + (y * y)));
+	}
+
+	private boolean ignoreTouchMove(float xPos, float yPos) {
+		if (mTouchInsideMode == TouchInsideMode.NEVER) {
+			float touchRadius = getTouchRadius(xPos, yPos);
+			return touchRadius < mTouchIgnoreMoveRadius;
+		}
+		return false;
 	}
 
 	private boolean touchWithinAngleBounds(double touchAngle) {
@@ -546,17 +561,26 @@ public class SeekArc extends View {
 			mProgressPaint.setStrokeCap(Paint.Cap.SQUARE);
 		}
 	}
-	
-	public void setTouchInSide(boolean isEnabled) {
+
+	public void setTouchInside(TouchInsideMode touchInsideMode) {
+		this.mTouchInsideMode = touchInsideMode;
 		int thumbHalfheight = mThumb.getIntrinsicHeight() / 2;
 		int thumbHalfWidth = mThumb.getIntrinsicWidth() / 2;
-		mTouchInside = isEnabled;
-		if (mTouchInside) {
-			mTouchIgnoreRadius = mArcRadius / 4;
-		} else {
-			// Don't use the exact radius makes interaction too tricky
-			mTouchIgnoreRadius = mArcRadius
-					- Math.min(thumbHalfWidth, thumbHalfheight);
+		float fullRadius = mArcRadius / 4;
+		float limitedRadius = mArcRadius - Math.min(thumbHalfWidth, thumbHalfheight);
+		switch (touchInsideMode) {
+			case ALWAYS:
+				mTouchIgnoreDownRadius = fullRadius;
+				mTouchIgnoreMoveRadius = fullRadius;
+				break;
+			case NEVER:
+				mTouchIgnoreDownRadius = limitedRadius;
+				mTouchIgnoreMoveRadius = limitedRadius;
+				break;
+			case ON_MOVE:
+				mTouchIgnoreDownRadius = limitedRadius;
+				mTouchIgnoreMoveRadius = fullRadius;
+				break;
 		}
 	}
 	
