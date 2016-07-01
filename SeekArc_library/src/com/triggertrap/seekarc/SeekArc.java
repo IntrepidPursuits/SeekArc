@@ -136,6 +136,7 @@ public class SeekArc extends View {
 	private float mTranslateY;
 	private double mThumbXPos;
 	private double mThumbYPos;
+	private float mThumbScale = 1f;
 	private float mTouchIgnoreDownRadius;
 	private float mTouchIgnoreMoveRadius;
 	private OnSeekArcChangeListener mOnSeekArcChangeListener;
@@ -328,8 +329,7 @@ public class SeekArc extends View {
 		float arcStart = mProgressSweep + mStartAngle + mRotation + 90;
 		mThumbXPos = mArcRadius * Math.cos(Math.toRadians(arcStart));
 		mThumbYPos = mArcRadius * Math.sin(Math.toRadians(arcStart));
-		
-		//setTouchInSide(mTouchInside);
+
 		setTouchInside(mTouchInsideMode);
 		super.onMeasure(widthMeasureSpec, heightMeasureSpec);
 	}
@@ -567,7 +567,7 @@ public class SeekArc extends View {
 		int thumbHalfheight = mThumb.getIntrinsicHeight() / 2;
 		int thumbHalfWidth = mThumb.getIntrinsicWidth() / 2;
 		float fullRadius = mArcRadius / 4;
-		float limitedRadius = mArcRadius - Math.min(thumbHalfWidth, thumbHalfheight);
+		float limitedRadius = mArcRadius - Math.min(thumbHalfWidth * mThumbScale, thumbHalfheight * mThumbScale);
 		switch (touchInsideMode) {
 			case ALWAYS:
 				mTouchIgnoreDownRadius = fullRadius;
@@ -582,6 +582,11 @@ public class SeekArc extends View {
 				mTouchIgnoreMoveRadius = fullRadius;
 				break;
 		}
+	}
+
+	public void setThumbScale(float scale) {
+		mThumbScale = scale;
+		setTouchInside(mTouchInsideMode);
 	}
 	
 	public void setClockwise(boolean isClockwise) {
